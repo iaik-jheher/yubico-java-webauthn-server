@@ -51,7 +51,7 @@ public class AuthenticatorSelectionCriteria {
 
   /**
    * Specifies the extent to which the Relying Party desires to create a client-side discoverable
-   * credential (passkey). For historical reasons the naming retains the deprecated “resident”
+   * credential (passkey). For historical reasons the naming retains the deprecated "resident"
    * terminology.
    *
    * <p>When this is set, {@link PublicKeyCredentialCreationOptions#toCredentialsCreateJson()} will

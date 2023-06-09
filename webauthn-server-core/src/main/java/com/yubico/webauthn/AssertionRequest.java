@@ -31,15 +31,14 @@ import com.yubico.internal.util.JacksonCodecs;
 import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredentialRequestOptions;
 import com.yubico.webauthn.data.UserIdentity;
-
 import java.util.Optional;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
 
 /**
- * A combination of a {@link PublicKeyCredentialRequestOptions} and, optionally, a {@link
- * #getUser() user identity}.
+ * A combination of a {@link PublicKeyCredentialRequestOptions} and, optionally, a {@link #getUser()
+ * user identity}.
  */
 @Value
 @Builder(toBuilder = true)
@@ -53,8 +52,9 @@ public class AssertionRequest {
 
   /**
    * The user to authenticate, if they have already been identified.
-   * 
-   * <p>If {@link #getUser() user} is empty, this indicates that this is a request for an assertion by a <a
+   *
+   * <p>If {@link #getUser() user} is empty, this indicates that this is a request for an assertion
+   * by a <a
    * href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">client-side-discoverable
    * credential</a> (passkey). Identification of the user is therefore deferred until the response
    * is received.
@@ -75,7 +75,7 @@ public class AssertionRequest {
 
   /**
    * The user to authenticate, if they have already been identified.
-   * 
+   *
    * <p>If this is empty, this indicates that this is a request for an assertion by a <a
    * href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">client-side-discoverable
    * credential</a> (passkey). Identification of the user is therefore deferred until the response
