@@ -23,21 +23,6 @@ import scala.jdk.OptionConverters.RichOption
 
 object Generators {
 
-  implicit val arbitraryUserIdentity: Arbitrary[UserIdentity] = Arbitrary(
-    halfsized(
-      for {
-        displayName <- arbitrary[String]
-        name <- arbitrary[String]
-        id <- arbitrary[ByteArray]
-      } yield UserIdentity
-        .builder()
-        .name(name)
-        .displayName(displayName)
-        .id(id)
-        .build()
-    )
-  )
-
   implicit val arbitraryAssertionResult: Arbitrary[AssertionResult] = Arbitrary(
     halfsized(
       for {

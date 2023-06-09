@@ -184,6 +184,7 @@ class RelyingPartyAssertionSpec
         Defaults.requestedExtensions,
       rpId: RelyingPartyIdentity = Defaults.rpId,
       signature: ByteArray = Defaults.signature,
+      userForRequest: Option[UserIdentity] = None,
       userHandleForResponse: Option[ByteArray] = Some(Defaults.userHandle),
       userHandleForRequest: Option[ByteArray] = None,
       userHandleForUser: ByteArray = Defaults.userHandle,
@@ -198,6 +199,60 @@ class RelyingPartyAssertionSpec
       else new ByteArray(clientDataJson.getBytes("UTF-8"))
     val credentialPublicKeyBytes = getPublicKeyBytes(credentialKey)
 
+    val credentialRepositoryV2: CredentialRepositoryV2 =
+      credentialRepository getOrElse new CredentialRepository {
+        override def lookup(credId: ByteArray, lookupUserHandle: ByteArray) =
+          (
+            if (credId == credentialId)
+              Some(
+                RegisteredCredential
+                  .builder()
+                  .credentialId(credId)
+                  .userHandle(userHandleForUser)
+                  .publicKeyCose(credentialPublicKeyBytes)
+                  .signatureCount(0)
+                  .build()
+              )
+            else None
+          ).toJava
+        override def lookupAll(credId: ByteArray) =
+          lookup(credId, null).toScala.toSet.asJava
+        override def getCredentialIdsForUsername(username: String) = ???
+        override def getUserHandleForUsername(
+            username: String
+        ): Optional[ByteArray] =
+          getUserHandleIfDefaultUsername(
+            username,
+            userHandle = userHandleForUser,
+          )
+        override def getUsernameForUserHandle(
+            userHandle: ByteArray
+        ): Optional[String] =
+          getUsernameIfDefaultUserHandle(
+            userHandle,
+            username = usernameForUser,
+          )
+      }
+
+    val realUserForRequest: Option[UserIdentity] =
+      userForRequest
+        .orElse(
+          usernameForRequest.map(un =>
+            credentialRepositoryV2
+              .findUserByUsername(un)
+              .toScala
+              .getOrElse(throw new IllegalArgumentException("username"))
+          )
+        )
+        .orElse(
+          userHandleForRequest.map(uh =>
+            credentialRepositoryV2
+              .findUserByUserHandle(uh)
+              .toScala
+              .getOrElse(throw new IllegalArgumentException("userHandle"))
+          )
+        )
+
     val request = AssertionRequest
       .builder()
       .publicKeyCredentialRequestOptions(
@@ -210,8 +265,7 @@ class RelyingPartyAssertionSpec
           .extensions(requestedExtensions)
           .build()
       )
-      .username(usernameForRequest.toJava)
-      .userHandle(userHandleForRequest.toJava)
+      .user(realUserForRequest.getOrElse(null))
       .build()
 
     val response = PublicKeyCredential
@@ -236,39 +290,7 @@ class RelyingPartyAssertionSpec
     val builder = RelyingParty
       .builder()
       .identity(rpId)
-      .credentialRepository(
-        credentialRepository getOrElse new CredentialRepository {
-          override def lookup(credId: ByteArray, lookupUserHandle: ByteArray) =
-            (
-              if (credId == credentialId)
-                Some(
-                  RegisteredCredential
-                    .builder()
-                    .credentialId(credId)
-                    .userHandle(userHandleForUser)
-                    .publicKeyCose(credentialPublicKeyBytes)
-                    .signatureCount(0)
-                    .build()
-                )
-              else None
-            ).toJava
-          override def lookupAll(credId: ByteArray) =
-            lookup(credId, null).toScala.toSet.asJava
-          override def getCredentialIdsForUsername(username: String) = ???
-          override def getUserHandleForUsername(username: String)
-              : Optional[ByteArray] =
-            getUserHandleIfDefaultUsername(
-              username,
-              userHandle = userHandleForUser,
-            )
-          override def getUsernameForUserHandle(userHandle: ByteArray)
-              : Optional[String] =
-            getUsernameIfDefaultUserHandle(
-              userHandle,
-              username = usernameForUser,
-            )
-        }
-      )
+      .credentialRepository(credentialRepositoryV2)
       .preferredPubkeyParams(Nil.asJava)
       .allowOriginPort(allowOriginPort)
       .allowOriginSubdomain(allowOriginSubdomain)
@@ -343,7 +365,7 @@ class RelyingPartyAssertionSpec
         val testData = registrationTestData.assertion.get
 
         val credRepo = {
-          val user = registrationTestData.userId
+          val targetUser = registrationTestData.userId
           val credential = RegisteredCredential
             .builder()
             .credentialId(registrationTestData.response.getId)
@@ -354,13 +376,13 @@ class RelyingPartyAssertionSpec
             .signatureCount(0)
             .build()
 
-          new CredentialRepository {
+          new CredentialRepositoryV2 {
             var lookupCount = 0
 
-            override def getCredentialIdsForUsername(
-                username: String
+            override def getCredentialIdsForUser(
+                user: UserIdentity
             ): java.util.Set[PublicKeyCredentialDescriptor] =
-              if (username == user.getName)
+              if (user.getName == targetUser.getName)
                 Set(
                   PublicKeyCredentialDescriptor
                     .builder()
@@ -369,18 +391,18 @@ class RelyingPartyAssertionSpec
                 ).asJava
               else Set.empty.asJava
 
-            override def getUserHandleForUsername(
+            override def findUserByUsername(
                 username: String
-            ): Optional[ByteArray] =
-              if (username == user.getName)
-                Some(user.getId).toJava
+            ): Optional[UserIdentity] =
+              if (username == targetUser.getName)
+                Some(targetUser).toJava
               else None.toJava
 
-            override def getUsernameForUserHandle(
+            override def findUserByUserHandle(
                 userHandle: ByteArray
-            ): Optional[String] =
-              if (userHandle == user.getId)
-                Some(user.getName).toJava
+            ): Optional[UserIdentity] =
+              if (userHandle == targetUser.getId)
+                Some(targetUser).toJava
               else None.toJava
 
             override def lookup(
@@ -389,7 +411,7 @@ class RelyingPartyAssertionSpec
             ): Optional[RegisteredCredential] = {
               lookupCount += 1
               if (
-                credentialId == credential.getCredentialId && userHandle == user.getId
+                credentialId == credential.getCredentialId && userHandle == targetUser.getId
               )
                 Some(credential).toJava
               else None.toJava
@@ -819,8 +841,7 @@ class RelyingPartyAssertionSpec
               )
             )
             val step: steps.Step7 = new steps.Step7(
-              Defaults.username,
-              Defaults.userHandle,
+              Defaults.user,
               None.toJava,
             )
 
@@ -2002,7 +2023,7 @@ class RelyingPartyAssertionSpec
               classOf[PublicKeyCredentialRequestOptions],
             )
           )
-          .username(testData.userId.getName)
+          .user(testData.userId)
           .build()
 
         val response: PublicKeyCredential[
@@ -2184,7 +2205,7 @@ class RelyingPartyAssertionSpec
               AssertionRequest
                 .builder()
                 .publicKeyCredentialRequestOptions(assertionRequest)
-                .username(registrationRequest.getUser.getName)
+                .user(registrationRequest.getUser)
                 .build()
             )
             .response(assertionResponse)
@@ -2572,7 +2593,7 @@ class RelyingPartyAssertionSpec
                 .rpId("localhost")
                 .build()
             )
-            .username(user.getName)
+            .user(user)
             .build()
 
           it("exposes isBackupEligible() with the BE flag value in authenticator data.") {

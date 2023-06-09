@@ -90,7 +90,7 @@ object Generators {
         } yield AssertionRequest
           .builder()
           .publicKeyCredentialRequestOptions(publicKeyCredentialRequestOptions)
-          .user(user)
+          .user(user.orElse(null))
           .build()
       )
     )

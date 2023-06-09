@@ -594,7 +594,7 @@ class RelyingPartyStartOperationSpec
             .username(testCaseUserId.getName)
             .build()
         )
-        result.getUsername.asScala should equal(Some(testCaseUserId.getName))
+        result.getUser should equal(Some(testCaseUserId))
       }
     }
 
@@ -608,7 +608,7 @@ class RelyingPartyStartOperationSpec
             .userHandle(testCaseUserId.getId)
             .build()
         )
-        result.getUserHandle.asScala should equal(Some(testCaseUserId.getId))
+        result.getUser should equal(Some(testCaseUserId))
       }
     }
 
@@ -835,26 +835,30 @@ class RelyingPartyStartOperationSpec
 
   describe("StartAssertionOptions") {
 
-    it("resets username when userHandle is set.") {
+    it("resets user and username when userHandle is set.") {
       forAll { (sao: StartAssertionOptions, userHandle: ByteArray) =>
         val result = sao.toBuilder.userHandle(userHandle).build()
+        result.getUser.toScala shouldBe empty
         result.getUsername.toScala shouldBe empty
       }
 
       forAll { (sao: StartAssertionOptions, userHandle: ByteArray) =>
         val result = sao.toBuilder.userHandle(Some(userHandle).toJava).build()
+        result.getUser.toScala shouldBe empty
         result.getUsername.toScala shouldBe empty
       }
     }
 
-    it("resets userHandle when username is set.") {
+    it("resets user and userHandle when username is set.") {
       forAll { (sao: StartAssertionOptions, username: String) =>
         val result = sao.toBuilder.username(username).build()
+        result.getUser.toScala shouldBe empty
         result.getUserHandle.toScala shouldBe empty
       }
 
       forAll { (sao: StartAssertionOptions, username: String) =>
         val result = sao.toBuilder.username(Some(username).toJava).build()
+        result.getUser.toScala shouldBe empty
         result.getUserHandle.toScala shouldBe empty
       }
     }
@@ -920,97 +924,6 @@ class RelyingPartyStartOperationSpec
 
         val result2 = preresult.toBuilder.userHandle(null: ByteArray).build()
         result2.getUserHandle.toScala shouldBe empty
-      }
-    }
-  }
-
-  describe("AssertionRequest") {
-
-    it("resets username when userHandle is set.") {
-      forAll { (ar: AssertionRequest, userHandle: ByteArray) =>
-        val result = ar.toBuilder.userHandle(userHandle).build()
-        result.getUsername.asScala shouldBe empty
-      }
-
-      forAll { (ar: AssertionRequest, userHandle: ByteArray) =>
-        val result = ar.toBuilder.userHandle(Some(userHandle).asJava).build()
-        result.getUsername.asScala shouldBe empty
-      }
-    }
-
-    it("resets userHandle when username is set.") {
-      forAll { (ar: AssertionRequest, username: String) =>
-        val result = ar.toBuilder.username(username).build()
-        result.getUserHandle.asScala shouldBe empty
-      }
-
-      forAll { (ar: AssertionRequest, username: String) =>
-        val result = ar.toBuilder.username(Some(username).asJava).build()
-        result.getUserHandle.asScala shouldBe empty
-      }
-    }
-
-    it("does not reset username when userHandle is set to empty.") {
-      forAll { (ar: AssertionRequest, username: String) =>
-        val result = ar.toBuilder
-          .username(username)
-          .userHandle(Optional.empty[ByteArray])
-          .build()
-        result.getUsername.asScala should equal(Some(username))
-      }
-
-      forAll { (ar: AssertionRequest, username: String) =>
-        val result = ar.toBuilder
-          .username(username)
-          .userHandle(null: ByteArray)
-          .build()
-        result.getUsername.asScala should equal(Some(username))
-      }
-    }
-
-    it("does not reset userHandle when username is set to empty.") {
-      forAll { (ar: AssertionRequest, userHandle: ByteArray) =>
-        val result = ar.toBuilder
-          .userHandle(userHandle)
-          .username(Optional.empty[String])
-          .build()
-        result.getUserHandle.asScala should equal(Some(userHandle))
-      }
-
-      forAll { (ar: AssertionRequest, userHandle: ByteArray) =>
-        val result = ar.toBuilder
-          .userHandle(userHandle)
-          .username(null: String)
-          .build()
-        result.getUserHandle.asScala should equal(Some(userHandle))
-      }
-    }
-
-    it("allows unsetting username.") {
-      forAll { (ar: AssertionRequest, username: String) =>
-        val preresult = ar.toBuilder.username(username).build()
-        preresult.getUsername.asScala should equal(Some(username))
-
-        val result1 =
-          preresult.toBuilder.username(Optional.empty[String]).build()
-        result1.getUsername.asScala shouldBe empty
-
-        val result2 = preresult.toBuilder.username(null: String).build()
-        result2.getUsername.asScala shouldBe empty
-      }
-    }
-
-    it("allows unsetting userHandle.") {
-      forAll { (ar: AssertionRequest, userHandle: ByteArray) =>
-        val preresult = ar.toBuilder.userHandle(userHandle).build()
-        preresult.getUserHandle.asScala should equal(Some(userHandle))
-
-        val result1 =
-          preresult.toBuilder.userHandle(Optional.empty[ByteArray]).build()
-        result1.getUserHandle.asScala shouldBe empty
-
-        val result2 = preresult.toBuilder.userHandle(null: ByteArray).build()
-        result2.getUserHandle.asScala shouldBe empty
       }
     }
   }

@@ -102,7 +102,7 @@ class RelyingPartyCeremoniesSpec
                 )
                 .build()
             )
-            .username(testData.user.getName)
+            .user(testData.user)
             .build()
         )
         .response(testData.assertion.get.credential)
@@ -116,7 +116,7 @@ class RelyingPartyCeremoniesSpec
     assertionResult.getCredential.getUserHandle should equal(
       testData.user.getId
     )
-    assertionResult.getUsername should equal(testData.user.getName)
+    assertionResult.getUser should equal(testData.user)
     assertionResult.getSignatureCount should be >= testData.attestation.authenticatorData.getSignatureCounter
     assertionResult.isSignatureCounterValid should be(true)
   }
