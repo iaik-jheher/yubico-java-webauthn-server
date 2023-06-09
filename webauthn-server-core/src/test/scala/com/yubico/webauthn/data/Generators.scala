@@ -86,11 +86,11 @@ object Generators {
         for {
           publicKeyCredentialRequestOptions <-
             arbitrary[PublicKeyCredentialRequestOptions]
-          username <- arbitrary[Optional[String]]
+          user <- arbitrary[Optional[UserIdentity]]
         } yield AssertionRequest
           .builder()
           .publicKeyCredentialRequestOptions(publicKeyCredentialRequestOptions)
-          .username(username)
+          .user(user)
           .build()
       )
     )

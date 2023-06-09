@@ -85,7 +85,7 @@ final class FinishRegistrationSteps {
   private final String rpId;
   private final boolean allowUntrustedAttestation;
   private final Optional<AttestationTrustSource> attestationTrustSource;
-  private final CredentialRepository credentialRepository;
+  private final CredentialRepositoryV2 credentialRepository;
   private final Clock clock;
 
   @Builder.Default private final boolean allowOriginPort = false;

@@ -27,6 +27,7 @@ package com.yubico.webauthn;
 import com.yubico.webauthn.data.AssertionExtensionInputs;
 import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredentialRequestOptions;
+import com.yubico.webauthn.data.UserIdentity;
 import com.yubico.webauthn.data.UserVerificationRequirement;
 import java.util.Optional;
 import lombok.Builder;
@@ -37,6 +38,8 @@ import lombok.Value;
 @Value
 @Builder(toBuilder = true)
 public class StartAssertionOptions {
+
+  private final UserIdentity user;
 
   private final String username;
 
@@ -80,18 +83,44 @@ public class StartAssertionOptions {
   private final Long timeout;
 
   /**
-   * The username of the user to authenticate, if the user has already been identified.
+   * The user to authenticate, if they have already been identified.
    *
-   * <p>Mutually exclusive with {@link #getUserHandle()}.
+   * <p>Mutually exclusive with {@link #getUsername()} and {@link #getUserHandle()}.
    *
-   * <p>If this or {@link #getUserHandle()} is present, then {@link
+   * <p>If either this, {@link #getUsername()} or {@link #getUserHandle()} is present, then {@link
    * RelyingParty#startAssertion(StartAssertionOptions)} will set {@link
    * PublicKeyCredentialRequestOptions#getAllowCredentials()} to the list of that user's
    * credentials.
    *
-   * <p>If this and {@link #getUserHandle()} are both absent, that implies authentication with a
-   * discoverable credential (passkey) - meaning identification of the user is deferred until after
-   * receiving the response from the client.
+   * <p>If all three of these values are absent, that implies authentication with a discoverable
+   * credential (passkey) - meaning identification of the user is deferred until after receiving the
+   * response from the client.
+   *
+   * <p>The default is empty (absent).
+   *
+   * @see <a
+   *     href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">Client-side-discoverable
+   *     credential</a>
+   * @see <a href="https://passkeys.dev/docs/reference/terms/#passkey">Passkey</a> in <a
+   *     href="https://passkeys.dev">passkeys.dev</a> reference
+   */
+  public Optional<UserIdentity> getUser() {
+    return Optional.ofNullable(user);
+  }
+
+  /**
+   * The username of the user to authenticate, if the user has already been identified.
+   *
+   * <p>Mutually exclusive with {@link #getUser()} and {@link #getUserHandle()}.
+   *
+   * <p>If either this, {@link #getUser()} or {@link #getUserHandle()} is present, then {@link
+   * RelyingParty#startAssertion(StartAssertionOptions)} will set {@link
+   * PublicKeyCredentialRequestOptions#getAllowCredentials()} to the list of that user's
+   * credentials.
+   *
+   * <p>If all three of these values are absent, that implies authentication with a discoverable
+   * credential (passkey) - meaning identification of the user is deferred until after receiving the
+   * response from the client.
    *
    * <p>The default is empty (absent).
    *
@@ -108,16 +137,16 @@ public class StartAssertionOptions {
   /**
    * The user handle of the user to authenticate, if the user has already been identified.
    *
-   * <p>Mutually exclusive with {@link #getUsername()}.
+   * <p>Mutually exclusive with {@link #getUser()} and {@link #getUsername()}.
    *
-   * <p>If this or {@link #getUsername()} is present, then {@link
+   * <p>If either this, {@link #getUser()} or {@link #getUsername()} is present, then {@link
    * RelyingParty#startAssertion(StartAssertionOptions)} will set {@link
    * PublicKeyCredentialRequestOptions#getAllowCredentials()} to the list of that user's
    * credentials.
    *
-   * <p>If this and {@link #getUsername()} are both absent, that implies authentication with a
-   * discoverable credential (passkey) - meaning identification of the user is deferred until after
-   * receiving the response from the client.
+   * <p>If all three of these values are absent, that implies authentication with a discoverable
+   * credential (passkey) - meaning identification of the user is deferred until after receiving the
+   * response from the client.
    *
    * <p>The default is empty (absent).
    *
@@ -163,28 +192,103 @@ public class StartAssertionOptions {
   }
 
   public static class StartAssertionOptionsBuilder {
+    private UserIdentity user = null;
     private String username = null;
     private ByteArray userHandle = null;
     private UserVerificationRequirement userVerification = null;
     private Long timeout = null;
 
     /**
+     * The user to authenticate, if the user has already been identified.
+     *
+     * <p>Mutually exclusive with {@link #username(Optional)} and {@link #userHandle(Optional)}.
+     * Setting this to a present value will clear both {@link #username(Optional)} and {@link
+     * #userHandle(Optional)}.
+     *
+     * <p>If either this, {@link #username(Optional)} or {@link #userHandle(Optional)} is present,
+     * then {@link RelyingParty#startAssertion(StartAssertionOptions)} will set {@link
+     * PublicKeyCredentialRequestOptions#getAllowCredentials()} to the list of that user's
+     * credentials.
+     *
+     * <p>If all three of these values are absent, that implies authentication with a discoverable
+     * credential (passkey) - meaning identification of the user is deferred until after receiving
+     * the response from the client.
+     *
+     * <p>The default is empty (absent).
+     *
+     * @see #user(UserIdentity)
+     * @see #username(Optional)
+     * @see #username(String)
+     * @see #userHandle(Optional)
+     * @see #userHandle(ByteArray)
+     * @see <a
+     *     href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">Client-side-discoverable
+     *     credential</a>
+     * @see <a href="https://passkeys.dev/docs/reference/terms/#passkey">Passkey</a> in <a
+     *     href="https://passkeys.dev">passkeys.dev</a> reference
+     */
+    public StartAssertionOptionsBuilder user(@NonNull Optional<UserIdentity> user) {
+      this.user = user.orElse(null);
+      if (this.user != null) {
+        this.username = null;
+        this.userHandle = null;
+      }
+      return this;
+    }
+
+    /**
+     * The user to authenticate, if the user has already been identified.
+     *
+     * <p>Mutually exclusive with {@link #username(Optional)} and {@link #userHandle(Optional)}.
+     * Setting this to a non-null value will clear both {@link #username(Optional)} and {@link
+     * #userHandle(Optional)}.
+     *
+     * <p>If either this, {@link #username(Optional)} or {@link #userHandle(Optional)} is present,
+     * then {@link RelyingParty#startAssertion(StartAssertionOptions)} will set {@link
+     * PublicKeyCredentialRequestOptions#getAllowCredentials()} to the list of that user's
+     * credentials.
+     *
+     * <p>If all three of these values are absent, that implies authentication with a discoverable
+     * credential (passkey) - meaning identification of the user is deferred until after receiving
+     * the response from the client.
+     *
+     * <p>The default is empty (absent).
+     *
+     * @see #user(UserIdentity)
+     * @see #username(Optional)
+     * @see #username(String)
+     * @see #userHandle(Optional)
+     * @see #userHandle(ByteArray)
+     * @see <a
+     *     href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">Client-side-discoverable
+     *     credential</a>
+     * @see <a href="https://passkeys.dev/docs/reference/terms/#passkey">Passkey</a> in <a
+     *     href="https://passkeys.dev">passkeys.dev</a> reference
+     */
+    public StartAssertionOptionsBuilder user(UserIdentity user) {
+      return this.user(Optional.ofNullable(user));
+    }
+
+    /**
      * The username of the user to authenticate, if the user has already been identified.
      *
-     * <p>Mutually exclusive with {@link #userHandle(Optional)}. Setting this to a present value
-     * will set {@link #userHandle(Optional)} to empty.
+     * <p>Mutually exclusive with {@link #user(Optional)} and {@link #userHandle(Optional)}. Setting
+     * this to a present value will set both {@link #user(Optional)} and {@link
+     * #userHandle(Optional)} to empty.
      *
-     * <p>If this or {@link #userHandle(Optional)} is present, then {@link
+     * <p>If this, {@link #user(Optional)} or {@link #userHandle(Optional)} is present, then {@link
      * RelyingParty#startAssertion(StartAssertionOptions)} will set {@link
      * PublicKeyCredentialRequestOptions#getAllowCredentials()} to the list of that user's
      * credentials.
      *
-     * <p>If this and {@link #getUserHandle()} are both absent, that implies authentication with a
-     * discoverable credential (passkey) - meaning identification of the user is deferred until
-     * after receiving the response from the client.
+     * <p>If all three of these values are absent, that implies authentication with a discoverable
+     * credential (passkey) - meaning identification of the user is deferred until after receiving
+     * the response from the client.
      *
      * <p>The default is empty (absent).
      *
+     * @see #user(Optional)
+     * @see #user(UserIdentity)
      * @see #username(String)
      * @see #userHandle(Optional)
      * @see #userHandle(ByteArray)
@@ -197,6 +301,7 @@ public class StartAssertionOptions {
     public StartAssertionOptionsBuilder username(@NonNull Optional<String> username) {
       this.username = username.orElse(null);
       if (username.isPresent()) {
+        this.user = null;
         this.userHandle = null;
       }
       return this;
@@ -205,20 +310,23 @@ public class StartAssertionOptions {
     /**
      * The username of the user to authenticate, if the user has already been identified.
      *
-     * <p>Mutually exclusive with {@link #userHandle(Optional)}. Setting this to a non-null value
-     * will set {@link #userHandle(Optional)} to empty.
+     * <p>Mutually exclusive with {@link #user(Optional)} and {@link #userHandle(Optional)}. Setting
+     * this to a non-null value will set both {@link #user(Optional)} and {@link
+     * #userHandle(Optional)} to empty.
      *
-     * <p>If this or {@link #userHandle(Optional)} is present, then {@link
+     * <p>If this, {@link #user(Optional)} or {@link #userHandle(Optional)} is present, then {@link
      * RelyingParty#startAssertion(StartAssertionOptions)} will set {@link
      * PublicKeyCredentialRequestOptions#getAllowCredentials()} to the list of that user's
      * credentials.
      *
-     * <p>If this and {@link #getUserHandle()} are both absent, that implies authentication with a
-     * discoverable credential (passkey) - meaning identification of the user is deferred until
-     * after receiving the response from the client.
+     * <p>If all three of these values are absent, that implies authentication with a discoverable
+     * credential (passkey) - meaning identification of the user is deferred until after receiving
+     * the response from the client.
      *
      * <p>The default is empty (absent).
      *
+     * @see #user(Optional)
+     * @see #user(UserIdentity)
      * @see #username(Optional)
      * @see #userHandle(Optional)
      * @see #userHandle(ByteArray)
@@ -235,20 +343,23 @@ public class StartAssertionOptions {
     /**
      * The user handle of the user to authenticate, if the user has already been identified.
      *
-     * <p>Mutually exclusive with {@link #username(Optional)}. Setting this to a present value will
-     * set {@link #username(Optional)} to empty.
+     * <p>Mutually exclusive with {@link #user(Optional)} and {@link #username(Optional)}. Setting
+     * this to a present value will set both {@link #user(Optional)} and {@link #username(Optional)}
+     * to empty.
      *
-     * <p>If this or {@link #username(Optional)} is present, then {@link
+     * <p>If this, {@link #user(Optional)} or {@link #username(Optional)} is present, then {@link
      * RelyingParty#startAssertion(StartAssertionOptions)} will set {@link
      * PublicKeyCredentialRequestOptions#getAllowCredentials()} to the list of that user's
      * credentials.
      *
-     * <p>If this and {@link #getUsername()} are both absent, that implies authentication with a
-     * discoverable credential (passkey) - meaning identification of the user is deferred until
-     * after receiving the response from the client.
+     * <p>If all three of these values are absent, that implies authentication with a discoverable
+     * credential (passkey) - meaning identification of the user is deferred until after receiving
+     * the response from the client.
      *
      * <p>The default is empty (absent).
      *
+     * @see #user(UserIdentity)
+     * @see #user(Optional)
      * @see #username(String)
      * @see #username(Optional)
      * @see #userHandle(ByteArray)
@@ -263,6 +374,7 @@ public class StartAssertionOptions {
     public StartAssertionOptionsBuilder userHandle(@NonNull Optional<ByteArray> userHandle) {
       this.userHandle = userHandle.orElse(null);
       if (userHandle.isPresent()) {
+        this.user = null;
         this.username = null;
       }
       return this;
@@ -271,20 +383,23 @@ public class StartAssertionOptions {
     /**
      * The user handle of the user to authenticate, if the user has already been identified.
      *
-     * <p>Mutually exclusive with {@link #username(Optional)}. Setting this to a non-null value will
-     * set {@link #username(Optional)} to empty.
+     * <p>Mutually exclusive with {@link #user(Optional)} and {@link #username(Optional)}. Setting
+     * this to a non-null value will set both {@link #user(Optional)} and {@link
+     * #username(Optional)} to empty.
      *
-     * <p>If this or {@link #username(Optional)} is present, then {@link
+     * <p>If this, {@link #user(Optional)} or {@link #username(Optional)} is present, then {@link
      * RelyingParty#startAssertion(StartAssertionOptions)} will set {@link
      * PublicKeyCredentialRequestOptions#getAllowCredentials()} to the list of that user's
      * credentials.
      *
-     * <p>If this and {@link #getUsername()} are both absent, that implies authentication with a
-     * discoverable credential (passkey) - meaning identification of the user is deferred until
-     * after receiving the response from the client.
+     * <p>If all three of these values are absent, that implies authentication with a discoverable
+     * credential (passkey) - meaning identification of the user is deferred until after receiving
+     * the response from the client.
      *
      * <p>The default is empty (absent).
      *
+     * @see #user(UserIdentity)
+     * @see #user(Optional)
      * @see #username(String)
      * @see #username(Optional)
      * @see #userHandle(Optional)

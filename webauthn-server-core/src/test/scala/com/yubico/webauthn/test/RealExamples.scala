@@ -135,7 +135,7 @@ object RealExamples {
                   .challenge(assertion.collectedClientData.getChallenge)
                   .build()
               )
-              .username(user.getName)
+              .user(user)
               .build(),
             response = assertion.credential,
           )

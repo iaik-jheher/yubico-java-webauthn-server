@@ -44,6 +44,7 @@ import com.yubico.webauthn.data.PublicKeyCredentialRequestOptions;
 import com.yubico.webauthn.data.PublicKeyCredentialRequestOptions.PublicKeyCredentialRequestOptionsBuilder;
 import com.yubico.webauthn.data.RegistrationExtensionInputs;
 import com.yubico.webauthn.data.RelyingPartyIdentity;
+import com.yubico.webauthn.data.UserIdentity;
 import com.yubico.webauthn.exception.AssertionFailedException;
 import com.yubico.webauthn.exception.InvalidSignatureCountException;
 import com.yubico.webauthn.exception.RegistrationFailedException;
@@ -143,7 +144,7 @@ public class RelyingParty {
    *   <li>the stored signature counter when verifying an assertion
    * </ul>
    */
-  @NonNull private final CredentialRepository credentialRepository;
+  @NonNull private final CredentialRepositoryV2 credentialRepository;
 
   /**
    * The extension input to set for the <code>appid</code> and <code>appidExclude</code> extensions.
@@ -362,7 +363,7 @@ public class RelyingParty {
   private RelyingParty(
       @NonNull RelyingPartyIdentity identity,
       Set<String> origins,
-      @NonNull CredentialRepository credentialRepository,
+      @NonNull CredentialRepositoryV2 credentialRepository,
       @NonNull Optional<AppId> appId,
       @NonNull Optional<AttestationConveyancePreference> attestationConveyancePreference,
       @NonNull Optional<AttestationTrustSource> attestationTrustSource,
@@ -479,8 +480,7 @@ public class RelyingParty {
             .challenge(generateChallenge())
             .pubKeyCredParams(preferredPubkeyParams)
             .excludeCredentials(
-                credentialRepository.getCredentialIdsForUsername(
-                    startRegistrationOptions.getUser().getName()))
+                credentialRepository.getCredentialIdsForUser(startRegistrationOptions.getUser()))
             .authenticatorSelection(startRegistrationOptions.getAuthenticatorSelection())
             .extensions(
                 startRegistrationOptions
@@ -536,20 +536,39 @@ public class RelyingParty {
   }
 
   public AssertionRequest startAssertion(StartAssertionOptions startAssertionOptions) {
+    final Optional<UserIdentity> user =
+        OptionalUtil.orElseOptional(
+            startAssertionOptions.getUser(),
+            () ->
+                OptionalUtil.orElseOptional(
+                    startAssertionOptions
+                        .getUsername()
+                        .map(
+                            un ->
+                                credentialRepository
+                                    .findUserByUsername(un)
+                                    .orElseThrow(
+                                        () ->
+                                            new IllegalArgumentException(
+                                                "Unknown username " + un))),
+                    () ->
+                        startAssertionOptions
+                            .getUserHandle()
+                            .map(
+                                uh ->
+                                    credentialRepository
+                                        .findUserByUserHandle(uh)
+                                        .orElseThrow(
+                                            () ->
+                                                new IllegalArgumentException(
+                                                    "Unknown user handle: " + uh)))));
+
     PublicKeyCredentialRequestOptionsBuilder pkcro =
         PublicKeyCredentialRequestOptions.builder()
             .challenge(generateChallenge())
             .rpId(identity.getId())
             .allowCredentials(
-                OptionalUtil.orElseOptional(
-                        startAssertionOptions.getUsername(),
-                        () ->
-                            startAssertionOptions
-                                .getUserHandle()
-                                .flatMap(credentialRepository::getUsernameForUserHandle))
-                    .map(
-                        un ->
-                            new ArrayList<>(credentialRepository.getCredentialIdsForUsername(un))))
+                user.map(credentialRepository::getCredentialIdsForUser).map(ArrayList::new))
             .extensions(
                 startAssertionOptions
                     .getExtensions()
@@ -560,8 +579,7 @@ public class RelyingParty {
 
     return AssertionRequest.builder()
         .publicKeyCredentialRequestOptions(pkcro.build())
-        .username(startAssertionOptions.getUsername())
-        .userHandle(startAssertionOptions.getUserHandle())
+        .user(startAssertionOptions.getUser().orElse(null))
         .build();
   }
 
@@ -637,12 +655,13 @@ public class RelyingParty {
 
       public class Step2 {
         /**
-         * {@link RelyingPartyBuilder#credentialRepository(CredentialRepository)
+         * {@link RelyingPartyBuilder#credentialRepository(CredentialRepositoryV2)
          * credentialRepository} is a required parameter.
          *
-         * @see RelyingPartyBuilder#credentialRepository(CredentialRepository)
+         * @see RelyingPartyBuilder#credentialRepository(CredentialRepositoryV2)
          */
-        public RelyingPartyBuilder credentialRepository(CredentialRepository credentialRepository) {
+        public RelyingPartyBuilder credentialRepository(
+            CredentialRepositoryV2 credentialRepository) {
           return builder.credentialRepository(credentialRepository);
         }
       }

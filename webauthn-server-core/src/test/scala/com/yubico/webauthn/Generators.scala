@@ -10,6 +10,7 @@ import com.yubico.webauthn.data.ClientAssertionExtensionOutputs
 import com.yubico.webauthn.data.ClientRegistrationExtensionOutputs
 import com.yubico.webauthn.data.Generators._
 import com.yubico.webauthn.data.PublicKeyCredential
+import com.yubico.webauthn.data.UserIdentity
 import com.yubico.webauthn.data.UserVerificationRequirement
 import org.bouncycastle.asn1.x500.X500Name
 import org.scalacheck.Arbitrary
@@ -22,6 +23,21 @@ import scala.jdk.OptionConverters.RichOption
 
 object Generators {
 
+  implicit val arbitraryUserIdentity: Arbitrary[UserIdentity] = Arbitrary(
+    halfsized(
+      for {
+        displayName <- arbitrary[String]
+        name <- arbitrary[String]
+        id <- arbitrary[ByteArray]
+      } yield UserIdentity
+        .builder()
+        .name(name)
+        .displayName(displayName)
+        .id(id)
+        .build()
+    )
+  )
+
   implicit val arbitraryAssertionResult: Arbitrary[AssertionResult] = Arbitrary(
     halfsized(
       for {
@@ -33,12 +49,12 @@ object Generators {
         credential <- arbitrary[RegisteredCredential]
         signatureCounterValid <- arbitrary[Boolean]
         success <- arbitrary[Boolean]
-        username <- arbitrary[String]
+        user <- arbitrary[UserIdentity]
       } yield new AssertionResult(
         success,
         credentialResponse,
         credential,
-        username,
+        user,
         signatureCounterValid,
       )
     )

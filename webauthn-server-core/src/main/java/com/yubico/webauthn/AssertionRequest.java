@@ -30,6 +30,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.yubico.internal.util.JacksonCodecs;
 import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredentialRequestOptions;
+import com.yubico.webauthn.data.UserIdentity;
+
 import java.util.Optional;
 import lombok.Builder;
 import lombok.NonNull;
@@ -37,7 +39,7 @@ import lombok.Value;
 
 /**
  * A combination of a {@link PublicKeyCredentialRequestOptions} and, optionally, a {@link
- * #getUsername() username} or {@link #getUserHandle() user handle}.
+ * #getUser() user identity}.
  */
 @Value
 @Builder(toBuilder = true)
@@ -50,14 +52,9 @@ public class AssertionRequest {
   @NonNull private final PublicKeyCredentialRequestOptions publicKeyCredentialRequestOptions;
 
   /**
-   * The username of the user to authenticate, if the user has already been identified.
-   *
-   * <p>This is mutually exclusive with {@link #getUserHandle() userHandle}; setting this will unset
-   * {@link #getUserHandle() userHandle}. When parsing from JSON, {@link #getUserHandle()
-   * userHandle} takes precedence over this.
-   *
-   * <p>If both this and {@link #getUserHandle() userHandle} are empty, this indicates that this is
-   * a request for an assertion by a <a
+   * The user to authenticate, if they have already been identified.
+   * 
+   * <p>If {@link #getUser() user} is empty, this indicates that this is a request for an assertion by a <a
    * href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">client-side-discoverable
    * credential</a> (passkey). Identification of the user is therefore deferred until the response
    * is received.
@@ -65,51 +62,21 @@ public class AssertionRequest {
    * @see <a href="https://passkeys.dev/docs/reference/terms/#passkey">Passkey</a> in <a
    *     href="https://passkeys.dev">passkeys.dev</a> reference
    */
-  private final String username;
-
-  /**
-   * The user handle of the user to authenticate, if the user has already been identified.
-   *
-   * <p>This is mutually exclusive with {@link #getUsername() username}; setting this will unset
-   * {@link #getUsername() username}. When parsing from JSON, this takes precedence over {@link
-   * #getUsername() username}.
-   *
-   * <p>If both this and {@link #getUsername() username} are empty, this indicates that this is a
-   * request for an assertion by a <a
-   * href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">client-side-discoverable
-   * credential</a> (passkey). Identification of the user is therefore deferred until the response
-   * is received.
-   *
-   * @see <a href="https://passkeys.dev/docs/reference/terms/#passkey">Passkey</a> in <a
-   *     href="https://passkeys.dev">passkeys.dev</a> reference
-   */
-  private final ByteArray userHandle;
+  private final UserIdentity user;
 
   @JsonCreator
   private AssertionRequest(
       @NonNull @JsonProperty("publicKeyCredentialRequestOptions")
           PublicKeyCredentialRequestOptions publicKeyCredentialRequestOptions,
-      @JsonProperty("username") String username,
-      @JsonProperty("userHandle") ByteArray userHandle) {
+      @JsonProperty("user") UserIdentity user) {
     this.publicKeyCredentialRequestOptions = publicKeyCredentialRequestOptions;
-
-    if (userHandle != null) {
-      this.username = null;
-      this.userHandle = userHandle;
-    } else {
-      this.username = username;
-      this.userHandle = null;
-    }
+    this.user = user;
   }
 
   /**
-   * The username of the user to authenticate, if the user has already been identified.
-   *
-   * <p>This is mutually exclusive with {@link #getUserHandle()}; if this is present, then {@link
-   * #getUserHandle()} will be empty.
-   *
-   * <p>If both this and {@link #getUserHandle()} are empty, this indicates that this is a request
-   * for an assertion by a <a
+   * The user to authenticate, if they have already been identified.
+   * 
+   * <p>If this is empty, this indicates that this is a request for an assertion by a <a
    * href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">client-side-discoverable
    * credential</a> (passkey). Identification of the user is therefore deferred until the response
    * is received.
@@ -117,27 +84,8 @@ public class AssertionRequest {
    * @see <a href="https://passkeys.dev/docs/reference/terms/#passkey">Passkey</a> in <a
    *     href="https://passkeys.dev">passkeys.dev</a> reference
    */
-  public Optional<String> getUsername() {
-    return Optional.ofNullable(username);
-  }
-
-  /**
-   * The user handle of the user to authenticate, if the user has already been identified.
-   *
-   * <p>This is mutually exclusive with {@link #getUsername()}; if this is present, then {@link
-   * #getUsername()} will be empty.
-   *
-   * <p>If both this and {@link #getUsername()} are empty, this indicates that this is a request for
-   * an assertion by a <a
-   * href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">client-side-discoverable
-   * credential</a> (passkey). Identification of the user is therefore deferred until the response
-   * is received.
-   *
-   * @see <a href="https://passkeys.dev/docs/reference/terms/#passkey">Passkey</a> in <a
-   *     href="https://passkeys.dev">passkeys.dev</a> reference
-   */
-  public Optional<ByteArray> getUserHandle() {
-    return Optional.ofNullable(userHandle);
+  public Optional<UserIdentity> getUser() {
+    return Optional.ofNullable(user);
   }
 
   /**
@@ -199,8 +147,6 @@ public class AssertionRequest {
   }
 
   public static class AssertionRequestBuilder {
-    private String username = null;
-    private ByteArray userHandle = null;
 
     public static class MandatoryStages {
       private final AssertionRequestBuilder builder = new AssertionRequestBuilder();
@@ -217,88 +163,6 @@ public class AssertionRequest {
           PublicKeyCredentialRequestOptions publicKeyCredentialRequestOptions) {
         return builder.publicKeyCredentialRequestOptions(publicKeyCredentialRequestOptions);
       }
-    }
-
-    /**
-     * The username of the user to authenticate, if the user has already been identified.
-     *
-     * <p>This is mutually exclusive with {@link #userHandle(ByteArray)}; setting this to non-empty
-     * will unset {@link #userHandle(ByteArray)}.
-     *
-     * <p>If this is empty, this indicates that this is a request for an assertion by a <a
-     * href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">client-side-discoverable
-     * credential</a> (passkey). Identification of the user is therefore deferred until the response
-     * is received.
-     *
-     * @see <a href="https://passkeys.dev/docs/reference/terms/#passkey">Passkey</a> in <a
-     *     href="https://passkeys.dev">passkeys.dev</a> reference
-     */
-    public AssertionRequestBuilder username(@NonNull Optional<String> username) {
-      return this.username(username.orElse(null));
-    }
-
-    /**
-     * The username of the user to authenticate, if the user has already been identified.
-     *
-     * <p>This is mutually exclusive with {@link #userHandle(ByteArray)}; setting this to non-<code>
-     * null</code> will unset {@link #userHandle(ByteArray)}.
-     *
-     * <p>If this is empty, this indicates that this is a request for an assertion by a <a
-     * href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">client-side-discoverable
-     * credential</a> (passkey). Identification of the user is therefore deferred until the response
-     * is received.
-     *
-     * @see <a href="https://passkeys.dev/docs/reference/terms/#passkey">Passkey</a> in <a
-     *     href="https://passkeys.dev">passkeys.dev</a> reference
-     */
-    public AssertionRequestBuilder username(String username) {
-      this.username = username;
-      if (username != null) {
-        this.userHandle = null;
-      }
-      return this;
-    }
-
-    /**
-     * The user handle of the user to authenticate, if the user has already been identified.
-     *
-     * <p>This is mutually exclusive with {@link #username(String)}; setting this to non-empty will
-     * unset {@link #username(String)}.
-     *
-     * <p>If both this and {@link #username(String)} are empty, this indicates that this is a
-     * request for an assertion by a <a
-     * href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">client-side-discoverable
-     * credential</a> (passkey). Identification of the user is therefore deferred until the response
-     * is received.
-     *
-     * @see <a href="https://passkeys.dev/docs/reference/terms/#passkey">Passkey</a> in <a
-     *     href="https://passkeys.dev">passkeys.dev</a> reference
-     */
-    public AssertionRequestBuilder userHandle(@NonNull Optional<ByteArray> userHandle) {
-      return this.userHandle(userHandle.orElse(null));
-    }
-
-    /**
-     * The user handle of the user to authenticate, if the user has already been identified.
-     *
-     * <p>This is mutually exclusive with {@link #username(String)}; setting this to non-<code>null
-     * </code> will unset {@link #username(String)}.
-     *
-     * <p>If both this and {@link #username(String)} are empty, this indicates that this is a
-     * request for an assertion by a <a
-     * href="https://www.w3.org/TR/2021/REC-webauthn-2-20210408/#client-side-discoverable-public-key-credential-source">client-side-discoverable
-     * credential</a> (passkey). Identification of the user is therefore deferred until the response
-     * is received.
-     *
-     * @see <a href="https://passkeys.dev/docs/reference/terms/#passkey">Passkey</a> in <a
-     *     href="https://passkeys.dev">passkeys.dev</a> reference
-     */
-    public AssertionRequestBuilder userHandle(ByteArray userHandle) {
-      if (userHandle != null) {
-        this.username = null;
-      }
-      this.userHandle = userHandle;
-      return this;
     }
   }
 }

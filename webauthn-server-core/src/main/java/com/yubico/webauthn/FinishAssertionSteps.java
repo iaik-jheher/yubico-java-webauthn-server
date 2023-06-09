@@ -60,7 +60,7 @@ final class FinishAssertionSteps {
   private final Optional<ByteArray> callerTokenBindingId;
   private final Set<String> origins;
   private final String rpId;
-  private final CredentialRepository credentialRepository;
+  private final CredentialRepositoryV2 credentialRepository;
 
   @Builder.Default private final boolean allowOriginPort = false;
   @Builder.Default private final boolean allowOriginSubdomain = false;
@@ -125,52 +125,51 @@ final class FinishAssertionSteps {
   @Value
   class Step6 implements Step<Step7> {
 
-    private final Optional<ByteArray> requestedUserHandle =
-        OptionalUtil.orElseOptional(
-            request.getUserHandle(),
-            () -> request.getUsername().flatMap(credentialRepository::getUserHandleForUsername));
+    private final Optional<UserIdentity> requestedUser = request.getUser();
 
-    private final Optional<ByteArray> assertedUserHandle =
-        response.getResponse().getUserHandle();
-    
-    private final Optional<ByteArray> userHandle =
-        OptionalUtil.orElseOptional(assertedUserHandle, () -> requestedUserHandle);
-      
-    private final Optional<String> username = OptionalUtil.orElseOptional(
-        request.getUsername(),
-        () -> assertedUserHandle.flatMap(credentialRepository::getUsernameForUserHandle));
-    
-    private final Optional<UserIdentity> userIdentity = username.flatMap(un -> 
-        assertedUserHandle.map(uh -> UserIdentity.builder().name(un).displayName(un).id(uh).build()));
+    private final Optional<ByteArray> assertedUserHandle = response.getResponse().getUserHandle();
+
+    private final Optional<UserIdentity> authenticatingUser =
+        OptionalUtil.orElseOptional(
+            requestedUser,
+            () -> assertedUserHandle.flatMap(credentialRepository::findUserByUserHandle));
 
     private final Optional<RegisteredCredential> registration =
-        assertedUserHandle.flatMap(uh -> credentialRepository.lookup(response.getId(), uh));
+        authenticatingUser.flatMap(
+            user -> credentialRepository.lookup(response.getId(), user.getId()));
 
     @Override
     public Step7 nextStep() {
-      return new Step7(userIdentity.get(), userHandle.get(), registration);
+      return new Step7(authenticatingUser.get(), registration);
     }
 
     @Override
     public void validate() {
-      assertTrue(
-          userHandle.isPresent() && userIdentity.isPresent(),
-          "User could not be identified. (All of user, username, userHandle are unspecified.)");
-
-      if (requestedUserHandle.isPresent() && assertedUserHandle.isPresent()) {
+      if (!requestedUser.isPresent() && assertedUserHandle.isPresent()) {
         assertTrue(
-            requestedUserHandle.get().equals(assertedUserHandle.get()),
+            authenticatingUser.isPresent(),
+            "User could not be identified. (Included user handle: %s)",
+            assertedUserHandle.get());
+      } else {
+        assertTrue(
+            authenticatingUser.isPresent(),
+            "User could not be identified. (Passkey authentication was requested, but no user handle is included.)");
+      }
+
+      if (requestedUser.isPresent() && assertedUserHandle.isPresent()) {
+        assertTrue(
+            requestedUser.get().getId().equals(assertedUserHandle.get()),
             "User handle set in request (%s) does not match user handle received in response (%s).",
-            requestedUserHandle.get(),
+            requestedUser.get().getId(),
             assertedUserHandle.get());
       }
 
       assertTrue(registration.isPresent(), "Unknown credential: %s", response.getId());
 
       assertTrue(
-          userHandle.get().equals(registration.get().getUserHandle()),
+          authenticatingUser.get().getId().equals(registration.get().getUserHandle()),
           "User handle %s does not own credential %s",
-          userHandle.get(),
+          authenticatingUser.get().getId(),
           response.getId());
     }
   }
@@ -178,7 +177,6 @@ final class FinishAssertionSteps {
   @Value
   class Step7 implements Step<Step8> {
     private final UserIdentity user;
-    private final ByteArray userHandle;
     private final Optional<RegisteredCredential> credential;
 
     @Override
@@ -190,9 +188,9 @@ final class FinishAssertionSteps {
     public void validate() {
       assertTrue(
           credential.isPresent(),
-          "Unknown credential. Credential ID: %s, user handle: %s",
+          "Unknown credential. Credential ID: %s, user: %s",
           response.getId(),
-          userHandle);
+          user);
     }
   }
 
