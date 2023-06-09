@@ -1,4 +1,4 @@
-package com.yubico.webauthn.data;
+package com.yubico.webauthn;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -6,20 +6,33 @@ import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yubico.webauthn.data.ByteArray;
 import java.util.Optional;
 import org.junit.Test;
 
-public class UserIdentityTest {
+public class RegisteredCredentialTest {
+
+  private static ByteArray blank() {
+    return new ByteArray(new byte[] {});
+  }
 
   @Test
   public void itHasTheseBuilderMethods() {
-    UserIdentity.builder().name("").displayName("").id(new ByteArray(new byte[] {})).build();
+    RegisteredCredential.builder()
+        .credentialId(blank())
+        .userHandle(blank())
+        .publicKeyCose(blank())
+        .build();
   }
 
   @Test
   public void extraDataIsOptional() {
-    final UserIdentity obj =
-        UserIdentity.builder().name("").displayName("").id(new ByteArray(new byte[] {})).build();
+    final RegisteredCredential obj =
+        RegisteredCredential.builder()
+            .credentialId(blank())
+            .userHandle(blank())
+            .publicKeyCose(blank())
+            .build();
     assertFalse(obj.getExtraData(Object.class).isPresent());
   }
 
@@ -32,11 +45,11 @@ public class UserIdentityTest {
   @Test
   public void extraDataIsPreserved() {
     final Foo expectedAD = new Foo();
-    final UserIdentity obj =
-        UserIdentity.builder()
-            .name("")
-            .displayName("")
-            .id(new ByteArray(new byte[] {}))
+    final RegisteredCredential obj =
+        RegisteredCredential.builder()
+            .credentialId(blank())
+            .userHandle(blank())
+            .publicKeyCose(blank())
             .extraData(expectedAD)
             .build();
 
@@ -46,11 +59,11 @@ public class UserIdentityTest {
 
   @Test
   public void extraDataIsTypeSafe() {
-    final UserIdentity obj =
-        UserIdentity.builder()
-            .name("")
-            .displayName("")
-            .id(new ByteArray(new byte[] {}))
+    final RegisteredCredential obj =
+        RegisteredCredential.builder()
+            .credentialId(blank())
+            .userHandle(blank())
+            .publicKeyCose(blank())
             .extraData(new Foo())
             .build();
     assertFalse(obj.getExtraData(Bar.class).isPresent());
@@ -58,14 +71,18 @@ public class UserIdentityTest {
 
   @Test
   public void extraDataIsNotSerialized() throws JsonProcessingException {
-    final UserIdentity one =
-        UserIdentity.builder().name("").displayName("").id(new ByteArray(new byte[] {})).build();
-    final UserIdentity two = one.toBuilder().extraData(new Foo()).build();
+    final RegisteredCredential one =
+        RegisteredCredential.builder()
+            .credentialId(blank())
+            .userHandle(blank())
+            .publicKeyCose(blank())
+            .build();
+    final RegisteredCredential two = one.toBuilder().extraData(new Foo()).build();
 
     final ObjectMapper mapper = new ObjectMapper();
     final String expected = mapper.writeValueAsString(one);
     final String actual = mapper.writeValueAsString(two);
     assertEquals(expected, actual);
-    assertEquals(one, mapper.readValue(actual, UserIdentity.class));
+    assertEquals(one, mapper.readValue(actual, RegisteredCredential.class));
   }
 }
