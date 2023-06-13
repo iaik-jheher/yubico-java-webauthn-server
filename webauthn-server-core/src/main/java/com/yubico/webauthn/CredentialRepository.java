@@ -68,6 +68,15 @@ public interface CredentialRepository extends CredentialRepositoryV2 {
    */
   Optional<String> getUsernameForUserHandle(ByteArray userHandle);
 
+  /**
+   * Look up the public key and stored signature count for the given credential registered to the
+   * given user.
+   *
+   * <p>The returned {@link RegisteredCredential} is not expected to be long-lived. It may be read
+   * directly from a database or assembled from other components.
+   */
+  Optional<RegisteredCredential> lookup(ByteArray credentialId, ByteArray userHandle);
+
   /// map the methods of the new interface to the methods on the old interface
 
   @Override
@@ -85,5 +94,10 @@ public interface CredentialRepository extends CredentialRepositoryV2 {
   default Optional<UserIdentity> findUserByUserHandle(ByteArray userHandle) {
     return getUsernameForUserHandle(userHandle)
         .map(un -> UserIdentity.builder().name(un).displayName(un).id(userHandle).build());
+  }
+
+  @Override
+  default Optional<RegisteredCredential> lookup(ByteArray credentialId, UserIdentity identity) {
+    return lookup(credentialId, identity.getId());
   }
 }
