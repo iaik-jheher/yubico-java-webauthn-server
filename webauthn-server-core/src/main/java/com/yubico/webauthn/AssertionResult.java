@@ -76,7 +76,7 @@ public class AssertionResult {
    *
    * @see #getUserHandle()
    */
-  private final @NonNull String getUsername() {
+  public final @NonNull String getUsername() {
     return this.user.getName();
   }
 
