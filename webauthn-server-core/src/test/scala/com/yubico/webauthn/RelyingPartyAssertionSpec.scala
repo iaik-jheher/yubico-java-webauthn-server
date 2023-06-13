@@ -407,11 +407,11 @@ class RelyingPartyAssertionSpec
 
             override def lookup(
                 credentialId: ByteArray,
-                userHandle: ByteArray,
+                user: ByteArray,
             ): Optional[RegisteredCredential] = {
               lookupCount += 1
               if (
-                credentialId == credential.getCredentialId && userHandle == targetUser.getId
+                credentialId == credential.getCredentialId && user.getId == targetUser.getId
               )
                 Some(credential).toJava
               else None.toJava

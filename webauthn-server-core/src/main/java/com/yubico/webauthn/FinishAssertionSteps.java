@@ -136,7 +136,7 @@ final class FinishAssertionSteps {
 
     private final Optional<RegisteredCredential> registration =
         authenticatingUser.flatMap(
-            user -> credentialRepository.lookup(response.getId(), user.getId()));
+            user -> credentialRepository.lookup(response.getId(), user));
 
     @Override
     public Step7 nextStep() {

@@ -56,7 +56,7 @@ public class AssertionResult {
 
   /**
    * The {@link RegisteredCredential} that was returned by {@link
-   * CredentialRepository#lookup(ByteArray, ByteArray)} and whose public key was used to
+   * CredentialRepositoryV2#lookup(ByteArray, UserIdentity)} and whose public key was used to
    * successfully verify the assertion signature.
    *
    * <p>NOTE: The {@link RegisteredCredential#getSignatureCount() signature count}, {@link

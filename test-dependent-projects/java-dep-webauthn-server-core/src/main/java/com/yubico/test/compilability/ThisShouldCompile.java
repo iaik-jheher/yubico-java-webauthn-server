@@ -1,12 +1,16 @@
 package com.yubico.test.compilability;
 
 import com.yubico.webauthn.CredentialRepository;
+import com.yubico.webauthn.CredentialRepositoryV2;
 import com.yubico.webauthn.RegisteredCredential;
 import com.yubico.webauthn.RelyingParty;
 import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredentialDescriptor;
 import com.yubico.webauthn.data.PublicKeyCredentialType;
 import com.yubico.webauthn.data.RelyingPartyIdentity;
+import com.yubico.webauthn.data.UserIdentity;
+
+import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 
@@ -44,6 +48,35 @@ public class ThisShouldCompile {
                 return null;
               }
             })
+        .credentialRepository(
+              new CredentialRepositoryV2() {
+                @Override
+                public Set<PublicKeyCredentialDescriptor> getCredentialIdsForUser(UserIdentity user) {
+                  return Collections.emptySet();
+                }
+
+                @Override
+                public Optional<UserIdentity> findUserByUsername(String username) {
+                  return Optional.empty();
+                }
+
+                @Override
+                public Optional<UserIdentity> findUserByUserHandle(ByteArray userHandle) {
+                  return Optional.empty();
+                }
+
+                @Override
+                public Optional<RegisteredCredential> lookup(ByteArray credentialId, UserIdentity user) {
+                  return Optional.empty();
+                }
+
+                @Override
+                public Set<RegisteredCredential> lookupAll(ByteArray credentialId) {
+                  return Collections.emptySet();
+                }
+                
+              }
+        )
         .build();
   }
 
